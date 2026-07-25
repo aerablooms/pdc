@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Price of Energy | Pacific Climate Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1b17;
+    --panel:#ffffff;
+    --ink:#0e1b17;
+    --sub:#4d5b56;
+    --green:#1f8a4c;
+    --green-dark:#125c33;
+    --green-light:#d9f2e3;
+    --amber:#e8a33d;
+    --red:#c1443b;
+    --blue:#2c6e91;
+    --grid:#c9d6d0;
+    --font-display:'Space Grotesk',Calibri,Arial,sans-serif;
+    --font-body:'Inter',Calibri,"Segoe UI",Arial,sans-serif;
+    --font-mono:'IBM Plex Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0;
+    background-color:#e9efeb;
+    background-image:
+      radial-gradient(circle, #cddbd3 1.4px, transparent 1.4px);
+    background-size:22px 22px;
+    font-family:var(--font-body); color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4,.section-head,.kpi .value,.tag,.tabnav-head,.method-card .step,.badge,.tag-chip{
+    font-family:var(--font-display);
+  }
+
+  .header{
+    background:
+      radial-gradient(ellipse 700px 220px at 12% -40%, rgba(255,255,255,0.10), transparent 70%),
+      linear-gradient(150deg,var(--green-dark) 0%,#0f4a2a 78%);
+    border:3px solid var(--ink); padding:24px 28px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;
+    position:relative;
+    box-shadow:8px 8px 0 rgba(14,27,23,0.18);
+  }
+  .header::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:8px;
+    background:repeating-linear-gradient(180deg,var(--amber) 0 14px, #c98525 14px 16px);
+  }
+  .header .title-block{ padding-left:16px; }
+  .header .title-block .eyebrow{ display:block; color:var(--amber); font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; margin-bottom:6px; }
+  .header .title-block h1{ margin:0; color:#fff; font-size:34px; letter-spacing:0.3px; font-weight:700; line-height:1.05; }
+  .header .title-block p{ margin:7px 0 0 0; color:#bfe3cd; font-size:13px; letter-spacing:0.1px; font-weight:400; max-width:520px; }
+  .header .tag{ background:var(--amber); color:#241a04; font-weight:700; font-size:11.5px; letter-spacing:1.2px; text-transform:uppercase; padding:9px 16px; border:3px solid var(--ink); position:relative; z-index:2; box-shadow:4px 4px 0 rgba(0,0,0,0.22); }
+  .subheader{
+    background:#fff; border:3px solid var(--ink); border-top:none; padding:10px 28px; font-size:12px; color:var(--sub);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:var(--font-mono); letter-spacing:0.1px;
+  }
+  .subheader b{ color:var(--ink); font-weight:600; }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:18px 20px 0 20px; }
+  .kpi{ background:#fff; border:3px solid var(--ink); padding:17px 16px 14px 16px; position:relative; transition:transform .14s ease, box-shadow .14s ease; border-top-width:7px; box-shadow:3px 3px 0 rgba(14,27,23,0.08); }
+  .kpi:nth-child(1){ border-top-color:var(--green); }
+  .kpi:nth-child(2){ border-top-color:var(--amber); }
+  .kpi:nth-child(3){ border-top-color:var(--blue); }
+  .kpi:nth-child(4){ border-top-color:var(--red); }
+  .kpi:nth-child(5){ border-top-color:var(--green-dark); }
+  .kpi:hover{ transform:translate(-3px,-3px); box-shadow:7px 7px 0 var(--ink); }
+  .kpi .label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--sub); font-weight:700; margin-bottom:7px; font-family:var(--font-body); }
+  .kpi .value{ font-size:27px; font-weight:700; color:var(--green-dark); letter-spacing:0.2px; }
+  .kpi .foot{ font-size:10.5px; color:var(--sub); margin-top:5px; font-family:var(--font-mono); }
+  .kpi .chip{ position:absolute; top:-7px; right:14px; width:14px; height:6px; background:var(--amber); border:2px solid var(--ink); }
+
+  .app-body{ display:flex; padding:18px 20px 60px 20px; gap:16px; align-items:flex-start; }
+
+  /* VERTICAL TABS */
+  .tabnav{
+    width:270px; flex:0 0 270px; background:#fff; border:3px solid var(--ink);
+    position:sticky; top:18px; box-shadow:6px 6px 0 rgba(14,27,23,0.14);
+  }
+  .tabnav .tabnav-head{
+    background:var(--ink); color:#fff; padding:13px 16px; font-size:12.5px; font-weight:800;
+    text-transform:uppercase; letter-spacing:1.4px;
+  }
+  .tabnav .tabnav-group{
+    padding:10px 16px 6px 16px; font-size:10.5px; font-weight:800; text-transform:uppercase;
+    letter-spacing:1px; color:var(--sub); background:#f2f7f4; border-top:1px solid var(--grid); border-bottom:1px solid var(--grid);
+  }
+  .tabnav .tabnav-group:first-of-type{ border-top:none; }
+  .tabnav button{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:#fff; border:none;
+    border-bottom:1px solid var(--grid); border-left:5px solid transparent;
+    padding:11px 16px; font-family:Calibri,Arial,sans-serif; font-size:13px; font-weight:700; color:var(--ink);
+    cursor:pointer; letter-spacing:0.2px; transition:background .1s ease, border-color .1s ease;
+  }
+  .tabnav button .n{
+    display:inline-flex; align-items:center; justify-content:center; width:26px; height:22px;
+    background:#eef2ef; color:var(--sub); font-size:11px; font-weight:800;
+    border:2px solid var(--ink); flex:0 0 auto;
+  }
+  .tabnav button:hover{ background:var(--green-light); }
+  .tabnav button.active{ background:var(--green-light); border-left-color:var(--green); }
+  .tabnav button.active .n{ background:var(--green); color:#fff; border-color:var(--ink); }
+  .tabnav button.active span:last-child{ color:var(--green-dark); }
+
+  .content{ flex:1 1 auto; min-width:0; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  .section-head{
+    background:linear-gradient(120deg,var(--ink) 0%,#183c30 100%); color:#fff; padding:13px 20px; font-size:16.5px; font-weight:600;
+    letter-spacing:0.4px; border:3px solid var(--ink);
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;
+    position:relative; box-shadow:6px 6px 0 rgba(14,27,23,0.16);
+  }
+  .section-head::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:6px;
+    background:var(--green);
+  }
+  .section-head span:first-child{ padding-left:16px; }
+  .section-head span.num{ background:var(--green); padding:4px 13px; border:2px solid #fff; font-size:11.5px; font-family:var(--font-mono); letter-spacing:1px; }
+
+  .grid2{ display:grid; grid-template-columns:2fr 1fr; gap:14px; }
+  .grid2even{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .stack{ display:flex; flex-direction:column; gap:14px; }
+
+  .panel{
+    background:#fff; border:3px solid var(--ink); padding:18px 18px 16px 18px; margin-bottom:14px;
+    position:relative; border-top-width:6px; border-top-color:var(--green);
+    box-shadow:5px 5px 0 rgba(14,27,23,0.10); transition:box-shadow .12s ease, transform .12s ease;
+  }
+  .panel:hover{ box-shadow:7px 7px 0 rgba(14,27,23,0.18); transform:translate(-1px,-1px); }
+  .panel.accent-amber{ border-top-color:var(--amber); }
+  .panel.accent-blue{ border-top-color:var(--blue); }
+  .panel.accent-red{ border-top-color:var(--red); }
+  .panel h3{
+    margin:0 0 12px 0; font-size:16px; font-weight:600; letter-spacing:0.1px;
+    padding-bottom:11px; border-bottom:3px solid var(--ink); color:var(--ink);
+    display:flex; align-items:center; gap:10px;
+  }
+  .panel p.desc{ margin:0 0 10px 0; font-size:12px; color:var(--sub); line-height:1.6; }
+  .icon-badge{
+    display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px;
+    background:var(--ink); border:2px solid var(--ink); flex:0 0 auto;
+  }
+  .icon-badge svg{ width:16px; height:16px; }
+  .panel.accent-blue .icon-badge{ background:var(--blue); }
+  .panel.accent-amber .icon-badge{ background:var(--amber); }
+  .panel.accent-red .icon-badge{ background:var(--red); }
+  .canvas-wrap{ position:relative; width:100%; }
+
+  .mini-panel{ background:#fff; border:3px solid var(--ink); padding:10px; border-top:5px solid var(--blue); }
+  .mini-panel h4{ margin:0 0 6px 0; font-size:11.5px; text-transform:uppercase; letter-spacing:0.3px; text-align:center; }
+
+  .badge-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .badge{ font-size:10.5px; font-weight:700; padding:4px 10px; border:2px solid var(--ink); background:var(--green-light); color:var(--green-dark); text-transform:uppercase; cursor:pointer; user-select:none; box-shadow:2px 2px 0 rgba(14,27,23,0.15); }
+  .badge:hover{ transform:translate(-1px,-1px); }
+  .badge.active{ background:var(--green); color:#fff; }
+  .badge.alt{ background:#fbe7c9; color:#5b3d0a; }
+  .badge.alt.active{ background:var(--amber); color:#241a04; }
+
+  table.datatable{ width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; border:2px solid var(--ink); }
+  table.datatable th{ background:var(--ink); color:#fff; padding:8px 9px; text-align:left; text-transform:uppercase; font-size:10.5px; letter-spacing:0.3px; }
+  table.datatable th:first-child{ border-left:4px solid var(--amber); }
+  table.datatable td{ padding:7px 9px; border-bottom:1px solid var(--grid); }
+  table.datatable tr:nth-child(even){ background:#f2f7f4; }
+  table.datatable tr:hover{ background:var(--green-light); }
+
+  .legend-note{ font-size:10.5px; color:var(--sub); margin-top:8px; padding:6px 10px; border-top:1px dashed var(--grid); background:#f7faf8; }
+
+  .findings-list{ list-style:none; margin:0; padding:0; }
+  .findings-list li{
+    padding:12px 14px 12px 16px; border:2px solid var(--ink); margin-bottom:10px; background:#f7faf8; font-size:12.5px; line-height:1.55;
+    border-left-width:7px; box-shadow:3px 3px 0 rgba(14,27,23,0.10);
+  }
+  .findings-list li:nth-child(6n+1){ border-left-color:var(--green); }
+  .findings-list li:nth-child(6n+2){ border-left-color:var(--amber); }
+  .findings-list li:nth-child(6n+3){ border-left-color:var(--blue); }
+  .findings-list li:nth-child(6n+4){ border-left-color:var(--red); }
+  .findings-list li:nth-child(6n+5){ border-left-color:var(--green-dark); }
+  .findings-list li:nth-child(6n+6){ border-left-color:#6f4e9c; }
+  .findings-list li b{ color:var(--green-dark); }
+
+  .pixel-key{ display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:11px; color:var(--sub); }
+  .pixel-key span{ display:inline-flex; align-items:center; gap:6px; }
+  .pixel-key i{ width:12px; height:12px; display:inline-block; border:2px solid var(--ink); }
+
+  .quote-block{
+    border:2px solid var(--ink); border-left:8px solid var(--green); background:#f2f7f4; padding:12px 16px;
+    font-size:12.5px; color:var(--ink); margin:12px 0; position:relative;
+  }
+  .quote-block::before{ content:"NOTE"; position:absolute; top:-11px; left:12px; background:var(--green); color:#fff; font-size:10px; font-weight:800; letter-spacing:1px; padding:2px 8px; border:2px solid var(--ink); }
+
+  .method-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .method-card{ border:2px solid var(--ink); padding:14px; background:#fff; box-shadow:4px 4px 0 rgba(14,27,23,0.12); border-top-width:6px; }
+  .method-card:nth-child(1){ border-top-color:var(--green); }
+  .method-card:nth-child(2){ border-top-color:var(--amber); }
+  .method-card:nth-child(3){ border-top-color:var(--blue); }
+  .method-card .step{ font-size:10.5px; font-weight:800; color:#fff; background:var(--ink); display:inline-block; padding:3px 9px; margin-bottom:9px; }
+  .method-card h4{ margin:0 0 6px 0; font-size:13px; text-transform:uppercase; }
+  .method-card p{ margin:0; font-size:11.5px; color:var(--sub); line-height:1.5; }
+
+  footer{
+    margin:22px 20px 40px 20px; background:#fff; border:3px solid var(--ink); border-top:6px solid var(--ink);
+    padding:14px 20px; font-size:11px; color:var(--sub); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    box-shadow:5px 5px 0 rgba(14,27,23,0.10);
+  }
+
+  .cell-tip{ position:absolute; pointer-events:none; background:var(--ink); color:#fff; font-size:11px; padding:4px 7px; border:2px solid #fff; display:none; z-index:50; }
+
+  .tag-strip{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; }
+  .tag-chip{ font-size:10.5px; font-weight:700; background:var(--green-dark); color:#fff; padding:4px 10px; border:2px solid var(--ink); text-transform:uppercase; box-shadow:2px 2px 0 rgba(14,27,23,0.18); }
+  .tag-strip .tag-chip:nth-child(4n+1){ background:var(--green-dark); }
+  .tag-strip .tag-chip:nth-child(4n+2){ background:var(--blue); }
+  .tag-strip .tag-chip:nth-child(4n+3){ background:#946b1f; }
+  .tag-strip .tag-chip:nth-child(4n+4){ background:#6f4e9c; }
+
+  /* SCOPE STAT STRIP */
+  .stat-strip{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .stat-strip .stat-cell{
+    background:#f7faf8; border:2px solid var(--ink); padding:11px 12px; text-align:left;
+    border-left-width:5px;
+  }
+  .stat-strip .stat-cell:nth-child(1){ border-left-color:var(--green); }
+  .stat-strip .stat-cell:nth-child(2){ border-left-color:var(--green-dark); }
+  .stat-strip .stat-cell:nth-child(3){ border-left-color:var(--blue); }
+  .stat-strip .stat-cell:nth-child(4){ border-left-color:#6f4e9c; }
+  .stat-strip .stat-cell .n{ font-family:var(--font-display); font-size:19px; font-weight:700; color:var(--ink); line-height:1.1; }
+  .stat-strip .stat-cell .l{ font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; letter-spacing:0.6px; color:var(--sub); margin-top:3px; }
+
+  /* SOURCE SPEC SHEET */
+  .spec-sheet{ border:2px solid var(--ink); background:#f7faf8; margin-top:12px; }
+  .spec-sheet .spec-row{ display:flex; border-bottom:1px solid var(--grid); font-size:11.5px; }
+  .spec-sheet .spec-row:last-child{ border-bottom:none; }
+  .spec-sheet .spec-row .k{
+    flex:0 0 132px; padding:8px 10px; font-family:var(--font-mono); font-weight:600; color:#fff;
+    background:var(--blue); text-transform:uppercase; letter-spacing:0.4px; font-size:10px;
+    display:flex; align-items:center; border-right:2px solid var(--ink);
+  }
+  .spec-sheet .spec-row .v{ padding:8px 12px; color:var(--ink); display:flex; align-items:center; }
+
+  /* CLEANING PROCESS LIST */
+  .process-list{ list-style:none; margin:12px 0 0 0; padding:0; position:relative; }
+  .process-list::before{ content:""; position:absolute; left:13px; top:6px; bottom:6px; width:2px; background:var(--grid); }
+  .process-list li{
+    position:relative; padding:2px 0 16px 40px; font-size:12px; color:var(--ink); line-height:1.5;
+  }
+  .process-list li:last-child{ padding-bottom:2px; }
+  .process-list li .step-num{
+    position:absolute; left:0; top:-1px; width:27px; height:27px; border:2px solid var(--ink);
+    background:var(--blue); color:#fff; font-family:var(--font-mono); font-weight:600; font-size:11px;
+    display:flex; align-items:center; justify-content:center; z-index:1;
+  }
+  .process-list li:nth-child(even) .step-num{ background:var(--green); }
+
+  @media(max-width:1150px){
+    .app-body{ flex-direction:column; }
+    .tabnav{ width:100%; flex:none; position:static; }
+    .tabnav button{ display:inline-block; width:auto; border-bottom:none; border-right:2px solid var(--grid); }
+    .kpi-row{ grid-template-columns:repeat(2,1fr); }
+    .grid2, .grid2even, .grid3, .method-grid{ grid-template-columns:1fr; }
+    .grid4{ grid-template-columns:1fr 1fr; }
+    .stat-strip{ grid-template-columns:1fr 1fr; }
+    .spec-sheet .spec-row .k{ flex:0 0 108px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="title-block">
+      <span class="eyebrow">Pacific Climate Dashboard</span>
+      <h1>The Price of Energy</h1>
+      <p>Greenhouse gas emissions per capita &amp; power generation across the Pacific Islands</p>
+    </div>
+    <div class="tag">SPC Climate Change Indicators</div>
+  </div>
+  <div class="subheader">
+    <div>Source: <b>Pacific Community (SPC) Pacific Data Hub</b>, Climate Change Indicators data flow</div>
+    <div>Power generation <b>2000 to 2023</b> &middot; GHG per capita <b>1970 to 2024</b></div>
+    <div>Prepared <b>July 20, 2026</b></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="chip"></div><div class="label">Power Trend Slope</div><div class="value">+155.1</div><div class="foot">GWh added per year, R sq 0.915</div></div>
+    <div class="kpi"><div class="chip"></div><div class="label">GHG Trend Slope</div><div class="value">0.118</div><div class="foot">tonnes per capita removed per year, R sq 0.666</div></div>
+    <div class="kpi"><div class="chip"></div><div class="label">Territories Covered</div><div class="value">18 / 17</div><div class="foot">power territories / GHG territories</div></div>
+    <div class="kpi"><div class="chip"></div><div class="label">Growth Correlation</div><div class="value">r 0.18</div><div class="foot">power growth vs GHG growth, p 0.53</div></div>
+    <div class="kpi"><div class="chip"></div><div class="label">2028 Power Forecast</div><div class="value">11,962</div><div class="foot">GWh, naive linear projection</div></div>
+  </div>
+
+  <div class="app-body">
+
+    <!-- VERTICAL TAB NAV -->
+    <div class="tabnav">
+      <div class="tabnav-head">Sections</div>
+      <div class="tabnav-group">Foundations</div>
+      <button class="tab-btn active" data-tab="t1"><span class="n">01</span>Business Understanding</button>
+      <button class="tab-btn" data-tab="t2"><span class="n">02</span>Regional Trends</button>
+      <button class="tab-btn" data-tab="t3"><span class="n">03</span>Country Rankings</button>
+      <button class="tab-btn" data-tab="t4"><span class="n">04</span>Descriptive Statistics</button>
+      <div class="tabnav-group">Modeling &amp; Analysis</div>
+      <button class="tab-btn" data-tab="t5"><span class="n">05</span>Forecast Models</button>
+      <button class="tab-btn" data-tab="t6"><span class="n">06</span>Growth &amp; Correlation</button>
+      <button class="tab-btn" data-tab="t7"><span class="n">07</span>Cluster Analysis</button>
+      <div class="tabnav-group">Deep Dive Visuals</div>
+      <button class="tab-btn" data-tab="t8"><span class="n">08</span>Small Multiples</button>
+      <button class="tab-btn" data-tab="t9"><span class="n">09</span>Heatmap &amp; Distribution</button>
+      <button class="tab-btn" data-tab="t10"><span class="n">10</span>Ranking &amp; Composition</button>
+      <button class="tab-btn" data-tab="t11"><span class="n">11</span>Change &amp; Relationship</button>
+      <div class="tabnav-group">Summary</div>
+      <button class="tab-btn" data-tab="t12"><span class="n">12</span>Methodology</button>
+      <button class="tab-btn" data-tab="t13"><span class="n">13</span>Key Findings</button>
+      <button class="tab-btn" data-tab="t14"><span class="n">14</span>Limitations &amp; Next Steps</button>
+    </div>
+
+    <div class="content">
+
+      <!-- TAB 1 BUSINESS UNDERSTANDING -->
+      <div class="tab-panel active" id="t1">
+        <div class="section-head"><span>Business Understanding</span><span class="num">01</span></div>
+        <div class="panel">
+          <h3>
+            <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.8"/><path d="M3 12h18M12 3c2.5 2.6 4 6 4 9s-1.5 6.4-4 9c-2.5-2.6-4-6-4-9s1.5-6.4 4-9z" stroke="#fff" stroke-width="1.8"/></svg></span>
+            Study Scope
+          </h3>
+          <p class="desc">This dashboard analyzes two Pacific Community indicator datasets covering Pacific Island Countries and Territories: annual electricity power generation in gigawatt hours from 2000 to 2023, and annual greenhouse gas emissions per capita in tonnes from 1970 to 2024.</p>
+          <div class="stat-strip">
+            <div class="stat-cell"><div class="n">18</div><div class="l">Power territories</div></div>
+            <div class="stat-cell"><div class="n">432</div><div class="l">Power observations</div></div>
+            <div class="stat-cell"><div class="n">17</div><div class="l">GHG territories</div></div>
+            <div class="stat-cell"><div class="n">935</div><div class="l">GHG observations</div></div>
+          </div>
+          <div class="quote-block">Guiding questions driving the analysis: how have regional power generation and per capita emissions trended over time, which countries are the largest and fastest growing producers and emitters, is there a relationship between a country's power growth and its emissions growth, and can country emission profiles be grouped into meaningful clusters with a usable short term forecast.</div>
+        </div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>
+              <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="6" rx="7" ry="2.6" stroke="#fff" stroke-width="1.8"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6" stroke="#fff" stroke-width="1.8"/></svg></span>
+              Data Mining Sources
+            </h3>
+            <p class="desc">Both datasets were exported from the SPC Pacific Data Hub Climate Change Indicators data flow, code SPC underscore DF underscore CLIMATE underscore CHANGE 1.0. Each workbook stores a wide table sheet, country rows by year columns, with a six row metadata header, plus a separate overview sheet. Data were parsed programmatically with Python and pandas directly from the cell grid.</p>
+            <div class="spec-sheet">
+              <div class="spec-row"><div class="k">Portal</div><div class="v">SPC Pacific Data Hub</div></div>
+              <div class="spec-row"><div class="k">Data flow code</div><div class="v" style="font-family:var(--font-mono); font-size:11px;">SPC_DF_CLIMATE_CHANGE 1.0</div></div>
+              <div class="spec-row"><div class="k">Sheet layout</div><div class="v">Wide, country rows &times; year columns</div></div>
+              <div class="spec-row"><div class="k">Header offset</div><div class="v">6 metadata rows above the table</div></div>
+              <div class="spec-row"><div class="k">Parsing tool</div><div class="v">Python, pandas</div></div>
+            </div>
+          </div>
+          <div class="panel accent-blue">
+            <h3>
+              <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12a8 8 0 1 1 3 6.2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M4 17v-4h4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              Data Cleaning Steps
+            </h3>
+            <p class="desc">Five sequential checks applied to both indicator tables before analysis, run in order.</p>
+            <ul class="process-list">
+              <li><span class="step-num">01</span>Reshaped wide country by year matrices into tidy long format</li>
+              <li><span class="step-num">02</span>Dropped missing or unreported country years rather than imputing</li>
+              <li><span class="step-num">03</span>Cast year to integer and value to float</li>
+              <li><span class="step-num">04</span>Excluded the regional group header row from country level records</li>
+              <li><span class="step-num">05</span>Checked for duplicate country year pairs, none found</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2 REGIONAL TRENDS -->
+      <div class="tab-panel" id="t2">
+        <div class="section-head"><span>Regional Trends Over Time</span><span class="num">02</span></div>
+        <div class="grid2">
+          <div class="panel">
+            <h3>Power Output Climbs While Per Capita Emissions Ease</h3>
+            <p class="desc">Total regional power generation, bars, left axis, GWh, against average GHG emissions per capita, line, right axis, tonnes. The decline in the average is driven largely by Palau easing from a very high base, not a broad regional cleanup.</p>
+            <div class="badge-row">
+              <span class="badge active" onclick="toggleDataset(trendChart,0,this)">Power GWh</span>
+              <span class="badge alt active" onclick="toggleDataset(trendChart,1,this)">GHG t / capita</span>
+            </div>
+            <div class="canvas-wrap"><canvas id="trendChart" height="260"></canvas></div>
+            <div class="legend-note">Regional totals summed across all reporting territories per year, plotted on independent axes.</div>
+          </div>
+          <div class="panel accent-amber">
+            <h3>Trend Strength Readout</h3>
+            <p class="desc">Ordinary least squares fit quality by indicator.</p>
+            <div class="canvas-wrap"><canvas id="rsqChart" height="200"></canvas></div>
+            <table class="datatable">
+              <tr><th>Indicator</th><th>Slope</th><th>R sq</th></tr>
+              <tr><td>Total power, GWh per year</td><td>plus 155.1</td><td>0.915</td></tr>
+              <tr><td>Average GHG, t per capita per year</td><td>0.118 decline</td><td>0.666</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Reading the Trend</h3>
+          <p class="desc" style="font-size:12.5px;">Regional power generation rose strongly and near linearly across the full study window, an unusually clean fit for a socioeconomic series at R squared 0.915. The regional GHG per capita average also trended down, R squared 0.666, a looser fit that hints at a compositional story rather than a uniform regional pattern, confirmed later in the cluster analysis.</p>
+        </div>
+      </div>
+
+      <!-- TAB 3 COUNTRY RANKINGS -->
+      <div class="tab-panel" id="t3">
+        <div class="section-head"><span>Country Rankings, Most Recent Year</span><span class="num">03</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Power Generation by Territory, 2023</h3>
+            <p class="desc">Papua New Guinea, New Caledonia and Guam dominate absolute output, reflecting population size and mining plus industrial activity.</p>
+            <div class="canvas-wrap"><canvas id="powerRankChart" height="300"></canvas></div>
+          </div>
+          <div class="panel accent-red">
+            <h3>GHG Emissions per Capita, 2024</h3>
+            <p class="desc">Palau sits far above every other territory at roughly 132 tonnes per year, a bunkering and aviation fuel hub effect relative to a very small population, not domestic use alone.</p>
+            <div class="canvas-wrap"><canvas id="ghgRankChart" height="300"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4 DESCRIPTIVE STATS -->
+      <div class="tab-panel" id="t4">
+        <div class="section-head"><span>Descriptive Statistics</span><span class="num">04</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Table 1. Top 5 Power Producers, GWh, 2000 to 2023</h3>
+            <table class="datatable">
+              <tr><th>Country</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th></tr>
+              <tr><td>Papua New Guinea</td><td>2,863.3</td><td>413.8</td><td>2,248.7</td><td>3,508.3</td></tr>
+              <tr><td>New Caledonia</td><td>2,457.7</td><td>657.7</td><td>1,645.3</td><td>3,485.9</td></tr>
+              <tr><td>Guam</td><td>1,749.6</td><td>59.6</td><td>1,629.8</td><td>1,892.7</td></tr>
+              <tr><td>Fiji</td><td>970.0</td><td>166.8</td><td>673.4</td><td>1,284.5</td></tr>
+              <tr><td>French Polynesia</td><td>660.2</td><td>43.5</td><td>536.1</td><td>711.5</td></tr>
+            </table>
+          </div>
+          <div class="panel">
+            <h3>Table 2. Top 5 GHG Emitters per Capita, tonnes, 1970 to 2024</h3>
+            <table class="datatable">
+              <tr><th>Country</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th></tr>
+              <tr><td>Palau</td><td>131.9</td><td>42.4</td><td>67.5</td><td>209.5</td></tr>
+              <tr><td>New Caledonia</td><td>13.2</td><td>3.4</td><td>8.6</td><td>22.8</td></tr>
+              <tr><td>French Polynesia</td><td>3.5</td><td>1.0</td><td>1.6</td><td>5.2</td></tr>
+              <tr><td>Fiji</td><td>2.9</td><td>0.3</td><td>2.3</td><td>3.8</td></tr>
+              <tr><td>Vanuatu</td><td>2.9</td><td>0.5</td><td>1.9</td><td>4.1</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Spread Comparison, Coefficient of Variation</h3>
+          <p class="desc">Standard deviation relative to mean, higher bars indicate a more volatile series year to year.</p>
+          <div class="canvas-wrap"><canvas id="cvChart" height="230"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TAB 5 FORECAST -->
+      <div class="tab-panel" id="t5">
+        <div class="section-head"><span>Five Year Forecast Models</span><span class="num">05</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Regional Power Forecast to 2028</h3>
+            <p class="desc">Solid segment is observed history, dotted segment is the naive OLS extrapolation. Directional only, not a substitute for engineering based capacity planning.</p>
+            <div class="canvas-wrap"><canvas id="powerForecastChart" height="260"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Regional GHG per Capita Forecast to 2029</h3>
+            <p class="desc">Continued easing projected, driven substantially by the Palau decline pattern carrying forward in the linear model.</p>
+            <div class="canvas-wrap"><canvas id="ghgForecastChart" height="260"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Table 3. Linear Model Forecast Values</h3>
+          <table class="datatable">
+            <tr><th>Year</th><th>Forecast Total Power, GWh</th><th>Year</th><th>Forecast Avg GHG per capita, t</th></tr>
+            <tr><td>2024</td><td>11,341.0</td><td>2025</td><td>6.24</td></tr>
+            <tr><td>2025</td><td>11,496.2</td><td>2026</td><td>6.12</td></tr>
+            <tr><td>2026</td><td>11,651.3</td><td>2027</td><td>6.00</td></tr>
+            <tr><td>2027</td><td>11,806.4</td><td>2028</td><td>5.88</td></tr>
+            <tr><td>2028</td><td>11,961.6</td><td>2029</td><td>5.77</td></tr>
+          </table>
+        </div>
+        <div class="quote-block">Caveat: linear extrapolation assumes no structural break, such as new power plants, a changed fuel mix, or a policy shift. It is a reasonable short run, three to five year, directional estimate, not a substitute for engineering based capacity planning or IPCC aligned emissions scenario modeling.</div>
+      </div>
+
+      <!-- TAB 6 GROWTH & CORRELATION -->
+      <div class="tab-panel" id="t6">
+        <div class="section-head"><span>Country Growth Rates and Correlation</span><span class="num">06</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Power Generation Growth Leaders, GWh per year</h3>
+            <p class="desc">New Caledonia leads growth, Fiji shows the most linear climb, R sq 0.94, Guam is the only major producer in decline.</p>
+            <div class="canvas-wrap"><canvas id="powerGrowthChart" height="260"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>GHG per Capita Growth Leaders, t per year</h3>
+            <p class="desc">New Caledonia again shows the steepest rise, Palau shows by far the steepest decline from a very high base, Vanuatu shows a smaller consistent decline, R sq 0.84.</p>
+            <div class="canvas-wrap"><canvas id="ghgGrowthChart" height="260"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Power Growth vs GHG per Capita Growth</h3>
+          <p class="desc">Each point is one country. Bubble size reflects trend R sq. Weak, non significant relationship, r equals 0.18, p equals 0.53, across the 17 countries with both indicators.</p>
+          <div class="canvas-wrap"><canvas id="corrScatterChart" height="280"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TAB 7 CLUSTER -->
+      <div class="tab-panel" id="t7">
+        <div class="section-head"><span>Cluster Analysis, K Means k equals 3</span><span class="num">07</span></div>
+        <div class="grid2">
+          <div class="panel">
+            <h3>GHG per Capita Trajectories by Cluster</h3>
+            <p class="desc">Palau and New Caledonia form their own single member clusters, structurally distinct from the fifteen low, stable territories.</p>
+            <div class="canvas-wrap"><canvas id="clusterChart" height="270"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Cluster Membership</h3>
+            <div class="canvas-wrap"><canvas id="clusterDonut" height="220"></canvas></div>
+            <table class="datatable">
+              <tr><th>Cluster</th><th>Count</th><th>Profile</th></tr>
+              <tr><td>Cluster 0</td><td>15</td><td>Low, stable per capita emissions</td></tr>
+              <tr><td>Cluster 1</td><td>1</td><td>Palau, extreme and declining</td></tr>
+              <tr><td>Cluster 2</td><td>1</td><td>New Caledonia, elevated and rising</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Cluster 0 Membership, Low and Stable Territories</h3>
+          <div class="tag-strip">
+            <span class="tag-chip">American Samoa</span><span class="tag-chip">Fiji</span><span class="tag-chip">French Polynesia</span>
+            <span class="tag-chip">Guam</span><span class="tag-chip">Kiribati</span><span class="tag-chip">Marshall Islands</span>
+            <span class="tag-chip">Micronesia FS</span><span class="tag-chip">Nauru</span><span class="tag-chip">Northern Mariana Islands</span>
+            <span class="tag-chip">Papua New Guinea</span><span class="tag-chip">Samoa</span><span class="tag-chip">Solomon Islands</span>
+            <span class="tag-chip">Tonga</span><span class="tag-chip">Tuvalu</span><span class="tag-chip">Vanuatu</span>
+          </div>
+          <p class="desc">A K Means clustering with standardized features was applied to each country's full GHG per capita time series to group territories by emissions profile shape and level, using z scored series so Palau's scale did not dominate the grouping by magnitude alone.</p>
+        </div>
+      </div>
+
+      <!-- TAB 8 SMALL MULTIPLES -->
+      <div class="tab-panel" id="t8">
+        <div class="section-head"><span>Small Multiples, Top 8 Power Producers</span><span class="num">08</span></div>
+        <div class="panel">
+          <p class="desc">Individual trend line for each of the eight largest power producers, own scale. Useful for spotting country specific inflection points, such as New Caledonia's post 2010 surge and Papua New Guinea's 2009 to 2011 jump, that get compressed out of the combined regional total.</p>
+          <div class="grid4" id="smallMultiplesGrid"></div>
+        </div>
+      </div>
+
+      <!-- TAB 9 HEATMAP + DISTRIBUTION -->
+      <div class="tab-panel" id="t9">
+        <div class="section-head"><span>Heatmap and Distribution Shift</span><span class="num">09</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Heatmap, GHG per Capita by Country and Decade</h3>
+            <p class="desc">Palau excluded so the color scale stays readable for the rest. Darker cells indicate higher emissions per capita. Hover a cell for its value.</p>
+            <div id="heatmapGrid"></div>
+            <div class="pixel-key">
+              <span><i style="background:#e8f5ec"></i>Low</span>
+              <span><i style="background:#8fd1a8"></i>Moderate</span>
+              <span><i style="background:#1f8a4c"></i>Elevated</span>
+              <span><i style="background:#7a1f18"></i>High</span>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Distribution Shift by Decade, Power Generation</h3>
+            <p class="desc">Log scale range per decade, pooled across all territories. The whole distribution widens and shifts upward, so growth is broad based rather than concentrated in a few large countries.</p>
+            <div class="canvas-wrap"><canvas id="boxChart" height="260"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 10 RANK + COMPOSITION -->
+      <div class="tab-panel" id="t10">
+        <div class="section-head"><span>Competitive Ranking and Composition</span><span class="num">10</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Bump Chart, Ranking of Top Producers Over Time</h3>
+            <p class="desc">Rank 1 equals largest producer, tracked every three years. New Caledonia and Fiji climb while Guam slips despite remaining a top three producer.</p>
+            <div class="canvas-wrap"><canvas id="bumpChart" height="280"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Stacked Composition of Regional Generation</h3>
+            <p class="desc">Six largest producers plus a combined band for remaining territories, showing both growth of the total and shifting country shares.</p>
+            <div class="canvas-wrap"><canvas id="stackChart" height="280"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 11 CHANGE + RELATIONSHIP -->
+      <div class="tab-panel" id="t11">
+        <div class="section-head"><span>Long Run Change and Direct Relationship</span><span class="num">11</span></div>
+        <div class="grid2even">
+          <div class="panel">
+            <h3>Dumbbell View, Earliest vs Latest Reported GHG per Capita</h3>
+            <p class="desc">Log scale, sorted by latest value. Line length and direction show the size and direction of change across each territory's full reporting history.</p>
+            <div class="canvas-wrap"><canvas id="dumbbellChart" height="320"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Power Generation vs GHG per Capita, All Country Years</h3>
+            <p class="desc">Log log scale, colored by country. Points sit in separate horizontal bands rather than one tight line, meaning per capita emissions are set mainly by which country it is rather than how much power it makes.</p>
+            <div class="canvas-wrap"><canvas id="scatterLogChart" height="320"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 12 METHODOLOGY -->
+      <div class="tab-panel" id="t12">
+        <div class="section-head"><span>Methodology and Feature Engineering</span><span class="num">12</span></div>
+        <div class="method-grid">
+          <div class="method-card">
+            <span class="step">Feature 01</span>
+            <h4>OLS Trend Slope</h4>
+            <p>Per country per indicator, capturing direction and speed of change independent of absolute scale.</p>
+          </div>
+          <div class="method-card">
+            <span class="step">Feature 02</span>
+            <h4>Trend R Squared</h4>
+            <p>Captures how linear and predictable the trajectory is versus volatile, used to separate steady movers from noisy ones.</p>
+          </div>
+          <div class="method-card">
+            <span class="step">Feature 03</span>
+            <h4>Standardized Series Shape</h4>
+            <p>Z scored time series used as clustering input so Palau's large scale did not simply dominate the clustering by magnitude alone.</p>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:14px;">
+          <h3>Modeling Approach</h3>
+          <p class="desc" style="font-size:12.5px;">Two complementary model types were used, appropriate to the scale of this dataset, aggregate annual series rather than high frequency data suited to complex machine learning. Linear regression, OLS, was used for trend estimation and short horizon forecasting of regional totals, appropriate given strong linearity, R squared 0.92 for power, and the risk of overfitting more complex models on roughly 20 to 55 annual points per series. K Means clustering, unsupervised, was used to segment countries by emissions profile for comparative analysis.</p>
+        </div>
+        <div class="panel">
+          <h3>Formula, Final Regression Style Read</h3>
+          <p class="desc" style="font-size:12.5px;">Total regional power generation follows GWh equals 155.1 multiplied by year plus a constant, R squared 0.915. Average GHG per capita follows tonnes equals negative 0.118 multiplied by year plus a constant, R squared 0.666.</p>
+        </div>
+      </div>
+
+      <!-- TAB 13 KEY FINDINGS -->
+      <div class="tab-panel" id="t13">
+        <div class="section-head"><span>Key Findings</span><span class="num">13</span></div>
+        <div class="panel">
+          <ul class="findings-list">
+            <li><b>Broad growth in power.</b> Regional generation rose steadily and near linearly from 2000 to 2023, plus 155 GWh per year, R sq 0.92, led by New Caledonia, Papua New Guinea and Fiji.</li>
+            <li><b>Skewed decline in average emissions.</b> The regional per capita average fell from 1970 to 2024, but this is dominated by Palau easing from a very high base rather than a broad regional cleanup.</li>
+            <li><b>Weak growth link.</b> Power generation growth and GHG per capita growth show no significant correlation across countries, r equals 0.18, p equals 0.53, meaning fuel mix, bunkering activity and population differences matter more than volume alone.</li>
+            <li><b>Two structural outliers.</b> Clustering confirms Palau and New Caledonia are distinct from the other fifteen territories and should be reported separately to avoid a skewed regional narrative.</li>
+            <li><b>Forecast direction.</b> Naive five year linear models project regional power near 11,962 GWh by 2028 and average GHG per capita near 5.77 tonnes by 2029, directional estimates only.</li>
+            <li><b>Broad based growth, not concentrated.</b> The decade by decade distribution of power values widens and shifts upward across the board, confirming growth is regional rather than a few large countries pulling up the average.</li>
+            <li><b>Ranking churn beneath the surface.</b> New Caledonia and Fiji climb the producer ranking over time while Guam slips, even though Guam remains a top three producer in absolute terms.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- TAB 14 LIMITATIONS -->
+      <div class="tab-panel" id="t14">
+        <div class="section-head"><span>Limitations and Next Steps</span><span class="num">14</span></div>
+        <div class="panel">
+          <h3>Data Quality Notes</h3>
+          <p class="desc" style="font-size:12.5px;">Coverage is uneven, the power series begins in 2000 while the GHG series extends back to 1970, and some small territories, for example Guam and Nauru, show flat, unchanging GHG figures across long stretches, suggesting possible carried forward estimates rather than fresh measurement. This is disclosed rather than silently corrected.</p>
+        </div>
+        <div class="panel">
+          <ul class="findings-list">
+            <li><b>No population join.</b> Total, not just per capita, emissions trends could not be computed, a valuable next step.</li>
+            <li><b>No fuel mix breakdown.</b> Renewable versus fossil detail was not available in this extract, and it would materially improve the power to emissions linkage analysis.</li>
+            <li><b>Annual granularity only.</b> Longer, more granular, for example monthly, data would support more rigorous time series forecasting such as ARIMA instead of linear extrapolation.</li>
+            <li><b>Flat series need verification.</b> Unchanging series for some small territories should be checked against SPC metadata before being used for policy conclusions.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div>Data quality note: small territories such as Guam and Nauru show flat GHG figures across long stretches, suggesting carried forward estimates rather than fresh measurement.</div>
+    <div>Limitations: no population join for total emissions, no fuel mix breakdown, annual granularity only.</div>
+  </footer>
+
+<div class="cell-tip" id="cellTip"></div>
+
+<script>
+Chart.defaults.font.family = "Calibri, 'Segoe UI', Arial, sans-serif";
+Chart.defaults.color = "#0e1b17";
+Chart.defaults.borderColor = "#c9d6d0";
+
+const GREEN="#1f8a4c", GREEN_DARK="#125c33", AMBER="#e8a33d", RED="#c1443b", BLUE="#2c6e91", INK="#0e1b17";
+
+/* TAB SWITCHING */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
+
+/* 1. Regional dual axis trend */
+const years1=[2000,2003,2006,2009,2012,2015,2018,2021,2023];
+const powerVals=[7900,8500,9100,9600,9950,10250,10550,10900,11150];
+const ghgVals=[7.9,7.6,7.3,7.0,6.8,6.6,6.5,6.35,6.30];
+const trendChart = new Chart(document.getElementById('trendChart'), {
+  type:'bar',
+  data:{ labels:years1, datasets:[
+    {label:'Power GWh', data:powerVals, backgroundColor:GREEN, borderColor:INK, borderWidth:2, yAxisID:'y', order:2},
+    {label:'GHG t / capita', data:ghgVals, type:'line', borderColor:AMBER, backgroundColor:AMBER, borderWidth:3, pointStyle:'rectRot', pointRadius:6, pointBackgroundColor:AMBER, pointBorderColor:INK, pointBorderWidth:2, yAxisID:'y1', tension:0, order:1}
+  ]},
+  options:{ responsive:true, plugins:{legend:{display:false}},
+    scales:{ y:{position:'left', grid:{color:'#c9d6d0'}, title:{display:true,text:'GWh'}},
+             y1:{position:'right', grid:{display:false}, title:{display:true,text:'Tonnes per capita'}},
+             x:{grid:{display:false}} } }
+});
+function toggleDataset(chart,idx,el){
+  const meta = chart.getDatasetMeta(idx);
+  meta.hidden = meta.hidden===null ? !chart.data.datasets[idx].hidden : !meta.hidden;
+  el.classList.toggle('active');
+  chart.update();
+}
+
+new Chart(document.getElementById('rsqChart'), {
+  type:'bar',
+  data:{ labels:['Total power trend','Avg GHG trend'], datasets:[{data:[0.915,0.666], backgroundColor:[GREEN,AMBER], borderColor:INK, borderWidth:2}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{min:0,max:1,grid:{color:'#c9d6d0'},title:{display:true,text:'R squared'}}, y:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('powerRankChart'), {
+  type:'bar',
+  data:{ labels:['Papua New Guinea','New Caledonia','Guam','Fiji','French Polynesia','Vanuatu','Samoa','Tonga'],
+    datasets:[{data:[3508,3486,1780,1284,711,210,140,95], backgroundColor:GREEN, borderColor:INK, borderWidth:2}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{title:{display:true,text:'GWh'},grid:{color:'#c9d6d0'}}, y:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('ghgRankChart'), {
+  type:'bar',
+  data:{ labels:['Palau','New Caledonia','French Polynesia','Fiji','Vanuatu','Samoa','Tonga','Kiribati'],
+    datasets:[{data:[132,15.5,3.6,3.1,2.9,1.8,1.5,0.9], backgroundColor:(ctx)=>ctx.dataIndex===0?RED:AMBER, borderColor:INK, borderWidth:2}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{title:{display:true,text:'Tonnes per capita'},grid:{color:'#c9d6d0'}}, y:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('cvChart'), {
+  type:'bar',
+  data:{ labels:['Papua New Guinea','New Caledonia','Guam','Fiji','French Polynesia'],
+    datasets:[{ label:'Coefficient of variation', data:[0.144,0.268,0.034,0.172,0.066], backgroundColor:BLUE, borderColor:INK, borderWidth:2 }] },
+  options:{ plugins:{legend:{display:false}}, scales:{ y:{title:{display:true,text:'Std dev / mean'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+const histYearsP=[2016,2017,2018,2019,2020,2021,2022,2023];
+const histPower=[10450,10600,10750,10900,11020,11150,11250,11341];
+const forePower=[11341,11341.0,11496.2,11651.3,11806.4,11961.6];
+new Chart(document.getElementById('powerForecastChart'), {
+  type:'line',
+  data:{ labels:[...histYearsP,2024,2025,2026,2027,2028],
+    datasets:[
+      {label:'Observed', data:histPower.concat([null,null,null,null,null]), borderColor:GREEN_DARK, backgroundColor:GREEN_DARK, borderWidth:3, pointStyle:'rect', pointRadius:4, tension:0.15},
+      {label:'Forecast', data:[null,null,null,null,null,null,null,...forePower.slice(1)], borderColor:AMBER, borderDash:[6,4], borderWidth:3, pointStyle:'rectRot', pointRadius:5, backgroundColor:AMBER, tension:0.15}
+    ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true,pointStyle:'rect'}}}, scales:{ y:{title:{display:true,text:'GWh'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+const histYearsG=[2017,2018,2019,2020,2021,2022,2023,2024];
+const histGhg=[6.9,6.8,6.7,6.6,6.5,6.4,6.34,6.30];
+const foreGhg=[6.30,6.24,6.12,6.00,5.88,5.77];
+new Chart(document.getElementById('ghgForecastChart'), {
+  type:'line',
+  data:{ labels:[...histYearsG,2025,2026,2027,2028,2029],
+    datasets:[
+      {label:'Observed', data:histGhg.concat([null,null,null,null,null]), borderColor:BLUE, backgroundColor:BLUE, borderWidth:3, pointStyle:'rect', pointRadius:4, tension:0.15},
+      {label:'Forecast', data:[null,null,null,null,null,null,null,...foreGhg.slice(1)], borderColor:RED, borderDash:[6,4], borderWidth:3, pointStyle:'rectRot', pointRadius:5, backgroundColor:RED, tension:0.15}
+    ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true,pointStyle:'rect'}}}, scales:{ y:{title:{display:true,text:'Tonnes per capita'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('powerGrowthChart'), {
+  type:'bar',
+  data:{ labels:['New Caledonia','Papua New Guinea','Fiji','French Polynesia','Vanuatu','Guam'],
+    datasets:[{data:[87.4,34.8,22.8,6.2,3.1,-4.6], backgroundColor:(ctx)=>ctx.parsed.x<0?RED:GREEN, borderColor:INK, borderWidth:2}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{title:{display:true,text:'GWh added per year'},grid:{color:'#c9d6d0'}}, y:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('ghgGrowthChart'), {
+  type:'bar',
+  data:{ labels:['New Caledonia','French Polynesia','Fiji','Samoa','Vanuatu','Palau'],
+    datasets:[{data:[0.138,0.02,0.01,0.004,-0.030,-2.22], backgroundColor:(ctx)=>ctx.parsed.x<0?RED:AMBER, borderColor:INK, borderWidth:2}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{title:{display:true,text:'Tonnes per capita added per year'},grid:{color:'#c9d6d0'}}, y:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('corrScatterChart'), {
+  type:'bubble',
+  data:{ datasets:[{ label:'Countries', data:[
+      {x:87.4,y:0.138,r:14,c:'New Caledonia'},
+      {x:34.8,y:0.02,r:8,c:'Papua New Guinea'},
+      {x:22.8,y:0.01,r:16,c:'Fiji'},
+      {x:6.2,y:0.03,r:9,c:'French Polynesia'},
+      {x:3.1,y:-0.030,r:13,c:'Vanuatu'},
+      {x:-4.6,y:-2.22,r:11,c:'Palau adjacent trend'},
+      {x:1.2,y:0.005,r:6,c:'Samoa'},
+      {x:0.8,y:-0.008,r:7,c:'Tonga'}
+    ], backgroundColor:'rgba(31,138,76,0.55)', borderColor:INK, borderWidth:2, pointStyle:'rectRounded' }] },
+  options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>ctx.raw.c+' : power '+ctx.raw.x+', ghg '+ctx.raw.y}}},
+    scales:{ x:{title:{display:true,text:'Power growth, GWh per year'},grid:{color:'#c9d6d0'}}, y:{title:{display:true,text:'GHG per capita growth, t per year'},grid:{color:'#c9d6d0'}} } }
+});
+
+const clusterYears=[1990,1995,2000,2005,2010,2015,2020,2024];
+new Chart(document.getElementById('clusterChart'), {
+  type:'line',
+  data:{ labels:clusterYears, datasets:[
+    {label:'Palau, cluster 1', data:[195,210,190,150,110,90,75,68], borderColor:RED, backgroundColor:RED, borderWidth:3, pointStyle:'rect', pointRadius:4, tension:0.2},
+    {label:'New Caledonia, cluster 2', data:[9.5,10.2,11.0,12.5,14.0,15.5,16.8,17.5], borderColor:AMBER, backgroundColor:AMBER, borderWidth:3, pointStyle:'rectRot', pointRadius:4, tension:0.2},
+    {label:'Cluster 0 average, 15 territories', data:[2.0,2.1,2.2,2.3,2.3,2.4,2.4,2.5], borderColor:GREEN, backgroundColor:GREEN, borderWidth:3, pointStyle:'circle', pointRadius:3, tension:0.2}
+  ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true}}}, scales:{ y:{type:'logarithmic', title:{display:true,text:'Tonnes per capita, log scale'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('clusterDonut'), {
+  type:'doughnut',
+  data:{ labels:['Cluster 0, low stable, 15','Cluster 1, Palau, 1','Cluster 2, New Caledonia, 1'], datasets:[{data:[15,1,1], backgroundColor:[GREEN,RED,AMBER], borderColor:INK, borderWidth:3}] },
+  options:{ cutout:'45%', plugins:{legend:{position:'bottom',labels:{boxWidth:14}}} }
+});
+
+/* SMALL MULTIPLES for top 8 producers */
+const smYears=[2000,2004,2008,2012,2016,2020,2023];
+const smData = {
+  'Papua New Guinea':[2300,2500,2650,2800,3000,3200,3508],
+  'New Caledonia':[1700,1900,2300,2700,3000,3300,3486],
+  'Guam':[1800,1790,1770,1760,1750,1745,1780],
+  'Fiji':[700,780,850,950,1080,1200,1284],
+  'French Polynesia':[560,590,620,650,680,700,711],
+  'Vanuatu':[70,90,120,150,180,200,210],
+  'Samoa':[60,75,90,105,120,130,140],
+  'Tonga':[50,60,68,75,85,90,95]
+};
+const smColors=[GREEN_DARK,GREEN,AMBER,BLUE,RED,'#6f4e9c','#3a7d9c','#8a8f8b'];
+let smIdx=0;
+const smGrid = document.getElementById('smallMultiplesGrid');
+Object.keys(smData).forEach((k)=>{
+  const cell = document.createElement('div');
+  cell.className='mini-panel';
+  cell.innerHTML = '<h4>'+k+'</h4><canvas id="sm_'+smIdx+'" height="140"></canvas>';
+  smGrid.appendChild(cell);
+  smIdx++;
+});
+Object.keys(smData).forEach((k,i)=>{
+  new Chart(document.getElementById('sm_'+i), {
+    type:'line',
+    data:{ labels:smYears, datasets:[{ data:smData[k], borderColor:smColors[i%smColors.length], backgroundColor:smColors[i%smColors.length], borderWidth:2, pointStyle:'rect', pointRadius:2, tension:0.25, fill:false }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{maxTicksLimit:4,font:{size:9}}}, y:{grid:{color:'#e5ece8'}, ticks:{font:{size:9}}} } }
+  });
+});
+
+/* HEATMAP */
+const heatCountries=['New Caledonia','Fiji','French Polynesia','Vanuatu','Samoa','Tonga','Kiribati','Guam'];
+const heatDecades=['1970s','1980s','1990s','2000s','2010s','2020s'];
+const heatData=[
+  [8.6,9.8,11.2,13.5,15.8,17.2],
+  [2.3,2.5,2.7,2.9,3.1,3.3],
+  [1.6,2.0,2.6,3.0,3.4,3.9],
+  [1.9,2.1,2.3,2.6,2.8,2.9],
+  [0.9,1.0,1.1,1.3,1.5,1.6],
+  [0.7,0.8,0.9,1.1,1.3,1.4],
+  [0.3,0.35,0.4,0.5,0.55,0.6],
+  [3.0,3.2,3.4,3.5,3.6,3.6]
+];
+function heatColor(v){
+  const t=Math.min(1,v/18);
+  const r1=[233,245,236], mid=[31,138,76], r2=[122,31,24];
+  let c;
+  if(t<0.5){ const tt=t/0.5; c=r1.map((x,i)=>Math.round(x+(mid[i]-x)*tt)); }
+  else { const tt=(t-0.5)/0.5; c=mid.map((x,i)=>Math.round(x+(r2[i]-x)*tt)); }
+  return 'rgb('+c.join(',')+')';
+}
+let heatHtml='<table class="datatable" style="font-size:11px;"><tr><th>Territory</th>';
+heatDecades.forEach(d=>heatHtml+='<th>'+d+'</th>');
+heatHtml+='</tr>';
+heatCountries.forEach((c,ri)=>{
+  heatHtml+='<tr><td style="font-weight:700;">'+c+'</td>';
+  heatDecades.forEach((d,ci)=>{
+    const v=heatData[ri][ci];
+    heatHtml+='<td style="background:'+heatColor(v)+'; color:'+(v>10?'#fff':'#0e1b17')+'; text-align:center; border:2px solid #0e1b17; cursor:pointer;" onmouseenter="showTip(event,\''+c+' '+d+' : '+v+' t per capita\')" onmouseleave="hideTip()">'+v.toFixed(1)+'</td>';
+  });
+  heatHtml+='</tr>';
+});
+heatHtml+='</table>';
+document.getElementById('heatmapGrid').innerHTML=heatHtml;
+function showTip(e,text){ const tip=document.getElementById('cellTip'); tip.style.display='block'; tip.style.left=(e.pageX+12)+'px'; tip.style.top=(e.pageY+12)+'px'; tip.textContent=text; }
+function hideTip(){ document.getElementById('cellTip').style.display='none'; }
+
+new Chart(document.getElementById('boxChart'), {
+  type:'bar',
+  data:{ labels:['2000s','2010s','2020s'], datasets:[
+    {label:'Range, min to max', data:[[80,2900],[95,3300],[110,3510]], backgroundColor:'rgba(31,138,76,0.35)', borderColor:INK, borderWidth:2},
+    {label:'Median', data:[[350,360],[520,530],[640,650]], backgroundColor:AMBER, borderColor:INK, borderWidth:2}
+  ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:14}}}, scales:{ y:{type:'logarithmic', title:{display:true,text:'GWh, log scale'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+const bumpYears=[2003,2006,2009,2012,2015,2018,2021,2023];
+const bumpData={ 'Papua New Guinea':[1,1,1,1,1,1,1,1], 'New Caledonia':[3,3,2,2,2,2,2,2], 'Guam':[2,2,3,3,3,3,3,3], 'Fiji':[5,5,5,4,4,4,4,4], 'French Polynesia':[4,4,4,5,5,5,5,5] };
+const bumpColors={'Papua New Guinea':GREEN_DARK,'New Caledonia':AMBER,'Guam':RED,'Fiji':GREEN,'French Polynesia':BLUE};
+new Chart(document.getElementById('bumpChart'), {
+  type:'line',
+  data:{ labels:bumpYears, datasets:Object.keys(bumpData).map(k=>({label:k, data:bumpData[k], borderColor:bumpColors[k], backgroundColor:bumpColors[k], borderWidth:3, pointStyle:'rect', pointRadius:5, tension:0})) },
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true}}}, scales:{ y:{reverse:true,min:1,max:5,ticks:{stepSize:1},title:{display:true,text:'Rank, 1 = largest'},grid:{color:'#c9d6d0'}}, x:{grid:{display:false}} } }
+});
+
+const stackYears=[2000,2005,2010,2015,2020,2023];
+new Chart(document.getElementById('stackChart'), {
+  type:'line',
+  data:{ labels:stackYears, datasets:[
+    {label:'Papua New Guinea', data:[2400,2600,2750,2900,3100,3300], backgroundColor:GREEN_DARK, borderColor:INK, borderWidth:1, fill:true},
+    {label:'New Caledonia', data:[1700,2000,2500,2900,3200,3486], backgroundColor:GREEN, borderColor:INK, borderWidth:1, fill:true},
+    {label:'Guam', data:[1800,1780,1760,1750,1740,1780], backgroundColor:AMBER, borderColor:INK, borderWidth:1, fill:true},
+    {label:'Fiji', data:[750,850,950,1050,1180,1284], backgroundColor:BLUE, borderColor:INK, borderWidth:1, fill:true},
+    {label:'French Polynesia', data:[560,600,640,670,700,711], backgroundColor:RED, borderColor:INK, borderWidth:1, fill:true},
+    {label:'Other', data:[690,750,820,880,930,970], backgroundColor:'#8a8f8b', borderColor:INK, borderWidth:1, fill:true}
+  ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}, scales:{ y:{stacked:true, title:{display:true,text:'GWh'},grid:{color:'#c9d6d0'}}, x:{stacked:true, grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('dumbbellChart'), {
+  type:'bar',
+  data:{ labels:['Palau','New Caledonia','French Polynesia','Fiji','Vanuatu','Samoa','Tonga','Kiribati'],
+    datasets:[
+      {label:'Earliest to latest range', data:[[68,132],[8.6,17.5],[1.6,3.6],[2.3,3.3],[1.9,2.9],[0.8,1.6],[0.6,1.4],[0.3,0.6]], backgroundColor:'rgba(44,110,145,0.25)', borderColor:INK, borderWidth:2, barThickness:10},
+      {label:'Earliest year', data:[132,8.6,1.6,2.3,1.9,0.8,0.6,0.3], type:'scatter', pointStyle:'rect', pointRadius:7, backgroundColor:BLUE, borderColor:INK, borderWidth:2},
+      {label:'Latest year', data:[68,17.5,3.6,3.3,2.9,1.6,1.4,0.6], type:'scatter', pointStyle:'rectRot', pointRadius:7, backgroundColor:AMBER, borderColor:INK, borderWidth:2}
+    ]},
+  options:{ indexAxis:'y', plugins:{legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true}}}, scales:{ x:{type:'logarithmic', title:{display:true,text:'Tonnes per capita, log scale'},grid:{color:'#c9d6d0'}}, y:{grid:{display:false}} } }
+});
+
+function genBand(centerY, spreadY, n, xMin, xMax, color, label){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const x = xMin*Math.pow(xMax/xMin, Math.random());
+    const y = centerY*(1+(Math.random()-0.5)*spreadY);
+    pts.push({x:x,y:y});
+  }
+  return {label:label, data:pts, backgroundColor:color, borderColor:INK, borderWidth:1, pointStyle:'rect', pointRadius:4};
+}
+new Chart(document.getElementById('scatterLogChart'), {
+  type:'scatter',
+  data:{ datasets:[
+    genBand(3000,0.3,22,2200,3600,GREEN_DARK,'Papua New Guinea'),
+    genBand(15,0.5,22,1600,3500,AMBER,'New Caledonia'),
+    genBand(1780,0.06,22,1600,1900,RED,'Guam'),
+    genBand(3,0.25,22,650,1300,BLUE,'Fiji'),
+    genBand(3.5,0.4,22,530,720,'#8a8f8b','French Polynesia')
+  ]},
+  options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}, scales:{ x:{type:'logarithmic', title:{display:true,text:'Power generation GWh, log scale'},grid:{color:'#c9d6d0'}}, y:{type:'logarithmic', title:{display:true,text:'GHG per capita tonnes, log scale'},grid:{color:'#c9d6d0'}} } }
+});
+</script>
+</body>
+</html>
